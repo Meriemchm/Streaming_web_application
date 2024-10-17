@@ -7,6 +7,7 @@ import helmet from 'helmet';
 
 const app = express();
 const PORT = 3000;
+app.use('/uploads', express.static('uploads'));
 
 
 app.use(helmet({
@@ -62,11 +63,12 @@ app.get('/getvideo', (req, res) => {
     if (err) {
       return res.status(500).json({ message: 'Erreur lors de la lecture du dossier', error: err });
     }
-    const videoFiles = files.filter(file => file.endsWith('.mp4') || file.endsWith('.mkv') || file.endsWith('.avi') || file.endsWith('.mov'));
-    console.log(videoFiles); 
+    const videoFiles = files.filter(file => file.endsWith('.mp4') || file.endsWith('.mkv') || file.endsWith('.avi') || file.endsWith('.mov'))
+                            .map(file => `http://localhost:3000/uploads/${file}`); 
     res.json(videoFiles); 
   });
 });
+
 
 app.use('/uploads', express.static('uploads'));
 

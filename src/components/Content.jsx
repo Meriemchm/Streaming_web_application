@@ -33,8 +33,7 @@ const Content = () => {
         {videos.map((videoUrl, index) => (
           <li key={index}>
             <p>{videoUrl}</p>
-            <video width="500" height="320" controls>
-              <source src={videoUrl} type="video/mp4" />
+            <video width="500" height="320" src={videoUrl} controls>
               Votre navigateur ne supporte pas la lecture de cette vidéo.
             </video>
           </li>
