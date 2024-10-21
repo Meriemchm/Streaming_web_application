@@ -1,17 +1,17 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
-import fs from 'fs'; 
+import fs from 'fs';
 import cors from 'cors';
 import helmet from 'helmet';
 import os from 'os';
 
 
-const localIp = "192.168.191.49";
+const localIp = "192.168.1.35";
 
 const uploadsDir = 'uploads';
-if (!fs.existsSync(uploadsDir)){
-    fs.mkdirSync(uploadsDir);
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir);
 }
 
 // Ensure proper permissions
@@ -26,14 +26,14 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"], 
+      scriptSrc: ["'self'", "'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'"]
     }
   },
   crossOriginResourcePolicy: false
 }));
 
- app.use(cors()); //permet aux ressources d'être accessibles depuis d'autres domaines.
+app.use(cors()); //permet aux ressources d'être accessibles depuis d'autres domaines.
 
 /*
 app.use(cors({
@@ -57,7 +57,7 @@ const storage = multer.diskStorage({
 
 
 
-const upload = multer({ 
+const upload = multer({
   storage: storage,
   limits: { fileSize: 100000000 },
   fileFilter: (req, file, cb) => {
@@ -92,8 +92,8 @@ app.get('/getvideo', (req, res) => {
       return res.status(500).json({ message: 'Erreur lors de la lecture du dossier', error: err });
     }
     const videoFiles = files.filter(file => file.endsWith('.mp4') || file.endsWith('.mkv') || file.endsWith('.avi') || file.endsWith('.mov'))
-                            .map(file => `http://${localIp}:3000/uploads/${encodeURIComponent(file)}`); 
-    res.json(videoFiles); 
+      .map(file => `http://${localIp}:3000/uploads/${encodeURIComponent(file)}`);
+    res.json(videoFiles);
   });
 });
 

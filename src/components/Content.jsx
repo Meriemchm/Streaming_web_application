@@ -5,16 +5,16 @@ const Content = () => {
   const [error, setError] = useState(null);
   const [debugMessage, setDebugMessage] = useState(""); // Pour afficher un message de débogage
 
-  const apiUrl = "http://192.168.191.49:3000";
+  const apiUrl = "http://192.168.1.35:3000";
 
   useEffect(() => {
     const fetchVideos = async () => {
       setDebugMessage("Je suis dans fetchVideos"); // Définir un message de débogage
-      
+
       try {
         console.log(`Fetching videos from: ${apiUrl}/getvideo`);
         const response = await fetch(`${apiUrl}/getvideo`);
-        
+
         if (!response.ok) {
           throw new Error("Erreur lors de la récupération des vidéos");
         }
