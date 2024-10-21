@@ -7,7 +7,29 @@ import helmet from 'helmet';
 import os from 'os';
 
 
-const localIp = "192.168.191.49";
+const app = express();
+const PORT = 3000;
+
+// Fonction pour obtenir l'adresse IP locale
+const getLocalIpAddress = () => {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address; // Renvoie l'adresse IP locale
+      }
+    }
+  }
+  return '127.0.0.1'; // Par défaut si aucune adresse n'est trouvée
+};
+
+app.get('/get-ip', (req, res) => {
+  console.log('Requête reçue pour obtenir l\'IP');
+  const ip = getLocalIpAddress();
+  res.json({ ip }); // Envoie l'adresse IP au frontend
+});
+
+const localIp = getLocalIpAddress();
 
 const uploadsDir = 'uploads';
 if (!fs.existsSync(uploadsDir)){
@@ -17,8 +39,7 @@ if (!fs.existsSync(uploadsDir)){
 // Ensure proper permissions
 fs.chmodSync(uploadsDir, 0o755);
 
-const app = express();
-const PORT = 3000;
+
 app.use('/uploads', express.static('uploads')); //Rends les vidéos téléversés accessible depuis l'URL
 
 //définition des en-tetes HTTP
@@ -35,14 +56,6 @@ app.use(helmet({
 
  app.use(cors()); //permet aux ressources d'être accessibles depuis d'autres domaines.
 
-/*
-app.use(cors({
-  origin: ['http://192.168.1.101:5173', 'http://localhost:5173'], 
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type'],
-  credentials: true
-}));
-*/
 
 //Où uploder les fichiers et comment les nommer 
 const storage = multer.diskStorage({
@@ -51,7 +64,7 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + '-' + file.originalname);
+    cb(null, `${uniqueSuffix}-${encodeURIComponent(file.originalname)}`);
   }
 });
 
@@ -99,9 +112,6 @@ app.get('/getvideo', (req, res) => {
 
 
 
-app.use('/uploads', express.static('uploads'));
-
-
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on http://${localIp}:${PORT}`);
@@ -111,3 +121,5 @@ app.use((req, res, next) => {
   console.log(`Received request for: ${req.url}`);
   next();
 });
+
+

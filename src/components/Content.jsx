@@ -1,36 +1,39 @@
 import React, { useEffect, useState } from "react";
 
 const Content = () => {
+  const [serverIp, setServerIp] = useState("");
   const [videos, setVideos] = useState([]);
   const [error, setError] = useState(null);
   const [debugMessage, setDebugMessage] = useState(""); // Pour afficher un message de débogage
 
-  const apiUrl = "http://192.168.191.49:3000";
+
 
   useEffect(() => {
-    const fetchVideos = async () => {
-      setDebugMessage("Je suis dans fetchVideos"); // Définir un message de débogage
-      
-      try {
-        console.log(`Fetching videos from: ${apiUrl}/getvideo`);
-        const response = await fetch(`${apiUrl}/getvideo`);
-        
-        if (!response.ok) {
-          throw new Error("Erreur lors de la récupération des vidéos");
+      const fetchVideos = async () => {
+        const apiUrl = `http://192.168.1.101:3000`;  // Utilise des backticks pour interpoler serverIp
+        setDebugMessage("Je suis dans fetchVideos"); // Définir un message de débogage
+
+        try {
+          console.log(`Fetching videos from: ${apiUrl}/getvideo`);
+          const response = await fetch(`${apiUrl}/getvideo`);
+
+          if (!response.ok) {
+            throw new Error("Erreur lors de la récupération des vidéos");
+          }
+
+          const data = await response.json();
+          console.log("Vidéos récupérées :", data);
+          setVideos(data);
+          //setDebugMessage("Vidéos récupérées avec succès");
+        } catch (err) {
+          setError(err.message);
+          setDebugMessage(`Erreur: ${err.message}`);
         }
+      };
 
-        const data = await response.json();
-        console.log("Vidéos récupérées :", data);
-        setVideos(data);
-        setDebugMessage("Vidéos récupérées avec succès");
-      } catch (err) {
-        setError(err.message);
-        setDebugMessage(`Erreur: ${err.message}`);
-      }
-    };
-
-    fetchVideos();
-  }, [apiUrl]);
+      fetchVideos();
+    
+  }, [serverIp]); // fetchVideos dépend de serverIp
 
   return (
     <div className="w-full p-4">
