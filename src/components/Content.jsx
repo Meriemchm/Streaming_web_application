@@ -3,21 +3,29 @@ import React, { useEffect, useState } from "react";
 const Content = () => {
   const [videos, setVideos] = useState([]);
   const [error, setError] = useState(null);
+  const [debugMessage, setDebugMessage] = useState(""); // Pour afficher un message de débogage
 
-  // URL de l'API
-  const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
+  const apiUrl = "http://192.168.191.49:3000";
 
   useEffect(() => {
     const fetchVideos = async () => {
+      setDebugMessage("Je suis dans fetchVideos"); // Définir un message de débogage
+      
       try {
+        console.log(`Fetching videos from: ${apiUrl}/getvideo`);
         const response = await fetch(`${apiUrl}/getvideo`);
+        
         if (!response.ok) {
           throw new Error("Erreur lors de la récupération des vidéos");
         }
+
         const data = await response.json();
+        console.log("Vidéos récupérées :", data);
         setVideos(data);
+        setDebugMessage("Vidéos récupérées avec succès");
       } catch (err) {
         setError(err.message);
+        setDebugMessage(`Erreur: ${err.message}`);
       }
     };
 
@@ -26,6 +34,9 @@ const Content = () => {
 
   return (
     <div className="w-full p-4">
+      {/* Afficher le message de débogage */}
+      <h1>{debugMessage}</h1>
+
       {error && <p className="text-red-500">{error}</p>}
       <h2 className="text-xl font-semibold mb-4 text-gray-800">
         Liste des vidéos :
