@@ -9,7 +9,7 @@ const Form = () => {
   useEffect(() => {
     const fetchServerIp = async () => {
       try {
-        const ip = "192.168.1.101"; // Adresse IP fixe pour le test
+        const ip = "192.168.1.35"; // Adresse IP fixe pour le test
         setServerIp(ip); 
       } catch (err) {
         console.error("Erreur de récupération de l'IP:", err);

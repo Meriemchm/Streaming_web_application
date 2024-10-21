@@ -10,7 +10,7 @@ const Content = () => {
 
   useEffect(() => {
       const fetchVideos = async () => {
-        const apiUrl = `http://192.168.1.101:3000`;  // Utilise des backticks pour interpoler serverIp
+        const apiUrl = `http://192.168.1.35:3000`;  // Utilise des backticks pour interpoler serverIp
         setDebugMessage("Je suis dans fetchVideos"); // Définir un message de débogage
 
         try {
