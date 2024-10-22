@@ -5,7 +5,16 @@ import fs from 'fs';
 import cors from 'cors';
 import helmet from 'helmet';
 import os from 'os';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
+import dotenv from 'dotenv';
+
+
+dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = 3000;
@@ -22,6 +31,8 @@ const getLocalIpAddress = () => {
   }
   return '127.0.0.1'; // Par défaut si aucune adresse n'est trouvée
 };
+
+console.log(getLocalIpAddress())
 
 app.get('/get-ip', (req, res) => {
   console.log('Requête reçue pour obtenir l\'IP');
@@ -111,9 +122,27 @@ app.get('/getvideo', (req, res) => {
 });
 
 
+const writeToEnvFile = (ip) => {
+  const envFilePath = path.join(__dirname, '..', '.env');
+
+  // Create or overwrite the .env file with the new content
+  const content = `VITE_SERVER_IP="${ip}"\n`;
+
+  fs.writeFile(envFilePath, content, (err) => {
+      if (err) {
+          console.error("Erreur lors de l'écriture dans le fichier .env :", err);
+      } else {
+          console.log(`Adresse IP ${ip} écrite dans le fichier .env`);
+      }
+  });
+};
+
+
+
 
 
 app.listen(PORT, '0.0.0.0', () => {
+  writeToEnvFile(localIp);
   console.log(`Server running on http://${localIp}:${PORT}`);
 });
 
