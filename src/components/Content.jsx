@@ -1,38 +1,42 @@
 import React, { useEffect, useState } from "react";
 
+
+
 const Content = () => {
   const [serverIp, setServerIp] = useState("");
   const [videos, setVideos] = useState([]);
   const [error, setError] = useState(null);
   const [debugMessage, setDebugMessage] = useState(""); // Pour afficher un message de débogage
 
+  const apiUrl = import.meta.env.VITE_SERVER_IP;
+  console.log(apiUrl ? 'no' : 'yes')
 
 
   useEffect(() => {
-      const fetchVideos = async () => {
-        const apiUrl = `http://192.168.1.35:3000`;  // Utilise des backticks pour interpoler serverIp
-        setDebugMessage("Je suis dans fetchVideos"); // Définir un message de débogage
+    const fetchVideos = async () => {
+      // Utilise des backticks pour interpoler serverIp
+      setDebugMessage("Je suis dans fetchVideos"); // Définir un message de débogage
 
-        try {
-          console.log(`Fetching videos from: ${apiUrl}/getvideo`);
-          const response = await fetch(`${apiUrl}/getvideo`);
+      try {
+        console.log(`Fetching videos from: ${apiUrl}/getvideo`);
+        const response = await fetch(`http://${apiUrl}:3000/getvideo`);
 
-          if (!response.ok) {
-            throw new Error("Erreur lors de la récupération des vidéos");
-          }
-
-          const data = await response.json();
-          console.log("Vidéos récupérées :", data);
-          setVideos(data);
-          //setDebugMessage("Vidéos récupérées avec succès");
-        } catch (err) {
-          setError(err.message);
-          setDebugMessage(`Erreur: ${err.message}`);
+        if (!response.ok) {
+          throw new Error("Erreur lors de la récupération des vidéos");
         }
-      };
 
-      fetchVideos();
-    
+        const data = await response.json();
+        console.log("Vidéos récupérées :", data);
+        setVideos(data);
+        //setDebugMessage("Vidéos récupérées avec succès");
+      } catch (err) {
+        setError(err.message);
+        setDebugMessage(`Erreur: ${err.message}`);
+      }
+    };
+
+    fetchVideos();
+
   }, [serverIp]); // fetchVideos dépend de serverIp
 
   return (
