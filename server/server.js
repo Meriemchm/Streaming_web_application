@@ -7,14 +7,14 @@ import helmet from "helmet";
 import os from "os";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
-
 import dotenv from "dotenv";
+import testRoute from "../server/test.js";
+
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
 const app = express();
 const PORT = 3000;
 
@@ -23,17 +23,15 @@ const getLocalIpAddress = () => {
   const interfaces = os.networkInterfaces();
   let ipAddress = null;
 
-
   Object.keys(interfaces).forEach((interfaceName) => {
     interfaces[interfaceName].forEach((iface) => {
-
       if (!iface.internal && iface.family === "IPv4") {
-        ipAddress = iface.address; 
+        ipAddress = iface.address;
       }
     });
   });
 
-  return ipAddress; 
+  return ipAddress;
 };
 
 console.log(getLocalIpAddress());
@@ -41,7 +39,7 @@ console.log(getLocalIpAddress());
 app.get("/get-ip", (req, res) => {
   console.log("Requête reçue pour obtenir l'IP");
   const ip = getLocalIpAddress();
-  res.json({ ip }); // Envoie l'adresse IP au frontend
+  res.json({ ip });
 });
 
 const localIp = getLocalIpAddress();
@@ -54,9 +52,8 @@ if (!fs.existsSync(uploadsDir)) {
 // Ensure proper permissions
 fs.chmodSync(uploadsDir, 0o755);
 
-app.use("/uploads", express.static("uploads")); //Rends les vidéos téléversés accessible depuis l'URL
+app.use("/uploads", express.static("uploads"));
 
-//définition des en-tetes HTTP
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -70,9 +67,8 @@ app.use(
   })
 );
 
-app.use(cors()); //permet aux ressources d'être accessibles depuis d'autres domaines.
+app.use(cors());
 
-//Où uploder les fichiers et comment les nommer
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, "uploads/");
@@ -114,9 +110,10 @@ app.post("/upload", upload.single("video"), (req, res) => {
   }
 });
 
+
 app.get("/getvideo", (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*"); // Permet toutes les origines
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST"); // Méthodes autorisées
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST");
   fs.readdir("uploads", (err, files) => {
     if (err) {
       return res
@@ -138,11 +135,29 @@ app.get("/getvideo", (req, res) => {
     res.json(videoFiles);
   });
 });
+const segmentsDir = path.join(__dirname, "uploads", "segments");
+if (!fs.existsSync(segmentsDir)) {
+  fs.mkdirSync(segmentsDir, { recursive: true });
+}
+
+app.get("/test", (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST");
+  fs.readdir(segmentsDir, (err, files) => {
+    if (err) {
+      return res.status(500).json({ message: "Erreur lors de la lecture du dossier segments", error: err });
+    }
+    const videoFiles = files
+      .filter(file => file.endsWith(".mp4") || file.endsWith(".mkv") || file.endsWith(".avi") || file.endsWith(".mov"))
+      .map(file => `http://${localIp}:3000/uploads/segments/${encodeURIComponent(file)}`);
+    res.json(videoFiles);
+  });
+});
+// Adding the /test route
+app.use("/test", testRoute);
 
 const writeToEnvFile = (ip) => {
   const envFilePath = path.join(__dirname, "..", ".env");
-
-  // Create or overwrite the .env file with the new content
   const content = `VITE_SERVER_IP="${ip}"\n`;
 
   fs.writeFile(envFilePath, content, (err) => {
