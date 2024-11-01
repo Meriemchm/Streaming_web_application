@@ -8,8 +8,7 @@ import os from "os";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 import dotenv from "dotenv";
-import testRoute from "../server/test.js";
-
+import { exec } from "child_process";
 
 dotenv.config();
 
@@ -18,7 +17,6 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = 3000;
 
-// l'adresseip
 const getLocalIpAddress = () => {
   const interfaces = os.networkInterfaces();
   let ipAddress = null;
@@ -34,7 +32,8 @@ const getLocalIpAddress = () => {
   return ipAddress;
 };
 
-console.log(getLocalIpAddress());
+const localIp = getLocalIpAddress();
+console.log(localIp);
 
 app.get("/get-ip", (req, res) => {
   console.log("Requête reçue pour obtenir l'IP");
@@ -42,18 +41,15 @@ app.get("/get-ip", (req, res) => {
   res.json({ ip });
 });
 
-const localIp = getLocalIpAddress();
+const uploadsDir = path.join(__dirname, "uploads");
+const segmentsDir = path.join(uploadsDir, "segments");
 
-const uploadsDir = "uploads";
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir);
-}
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+if (!fs.existsSync(segmentsDir)) fs.mkdirSync(segmentsDir, { recursive: true });
 
-// Ensure proper permissions
 fs.chmodSync(uploadsDir, 0o755);
 
 app.use("/uploads", express.static("uploads"));
-
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -66,12 +62,11 @@ app.use(
     crossOriginResourcePolicy: false,
   })
 );
-
 app.use(cors());
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/");
+    cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
@@ -84,77 +79,100 @@ const upload = multer({
   limits: { fileSize: 100000000 },
   fileFilter: (req, file, cb) => {
     const fileTypes = /mp4|mkv|avi|mov/;
-    const extname = fileTypes.test(
-      path.extname(file.originalname).toLowerCase()
-    );
+    const extname = fileTypes.test(path.extname(file.originalname).toLowerCase());
     const mimeType = fileTypes.test(file.mimetype);
 
-    if (extname && mimeType) {
-      cb(null, true);
-    } else {
-      cb(new Error("Format de fichier non pris en charge !"));
-    }
+    if (extname && mimeType) cb(null, true);
+    else cb(new Error("Format de fichier non pris en charge !"));
   },
 });
 
-// Routes
-app.post("/upload", upload.single("video"), (req, res) => {
+const segmentVideo = (filePath, segmentFolder, segmentDuration = 10) => {
+  return new Promise((resolve, reject) => {
+    const command = `ffmpeg -i "${filePath}" -c copy -map 0 -segment_time ${segmentDuration} -f segment "${segmentFolder}/segment_%03d.mp4"`;
+
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`Erreur lors de l'exécution de FFmpeg : ${error}`);
+        reject(error);
+      } else {
+        console.log(`Segmentation terminée : ${stdout}`);
+        resolve("Segmentation réussie !");
+      }
+    });
+  });
+};
+
+app.post("/upload", upload.single("video"), async (req, res) => {
   try {
-    res
-      .status(200)
-      .json({ message: "Vidéo téléversée avec succès", file: req.file });
+    const filePath = req.file.path;
+    const videoName = path.basename(filePath, path.extname(filePath));
+    const segmentFolder = path.join(segmentsDir, videoName);
+
+    if (!fs.existsSync(segmentFolder)) fs.mkdirSync(segmentFolder, { recursive: true });
+
+    await segmentVideo(filePath, segmentFolder);
+
+    res.status(200).json({
+      message: "Vidéo téléversée et segmentée avec succès",
+      file: req.file,
+    });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Erreur lors du téléversement de la vidéo", error });
+    res.status(500).json({
+      message: "Erreur lors du téléversement ou de la segmentation de la vidéo",
+      error,
+    });
   }
 });
-
 
 app.get("/getvideo", (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST");
-  fs.readdir("uploads", (err, files) => {
+
+  fs.readdir(uploadsDir, (err, files) => {
     if (err) {
-      return res
-        .status(500)
-        .json({ message: "Erreur lors de la lecture du dossier", error: err });
+      return res.status(500).json({
+        message: "Erreur lors de la lecture du dossier",
+        error: err,
+      });
     }
+
     const videoFiles = files
-      .filter(
-        (file) =>
-          file.endsWith(".mp4") ||
-          file.endsWith(".mkv") ||
-          file.endsWith(".avi") ||
-          file.endsWith(".mov")
+      .filter((file) =>
+        [".mp4", ".mkv", ".avi", ".mov"].some((ext) => file.endsWith(ext))
       )
-      .map(
-        (file) =>
-          `http://${localIp}:3000/uploads/${encodeURIComponent(file)}`
-      );
+      .map((file) => `http://${localIp}:3000/uploads/${encodeURIComponent(file)}`);
+
     res.json(videoFiles);
   });
 });
-const segmentsDir = path.join(__dirname, "uploads", "segments");
-if (!fs.existsSync(segmentsDir)) {
-  fs.mkdirSync(segmentsDir, { recursive: true });
-}
 
-app.get("/test", (req, res) => {
+app.get("/segments", (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST");
-  fs.readdir(segmentsDir, (err, files) => {
+
+  fs.readdir(segmentsDir, (err, folders) => {
     if (err) {
-      return res.status(500).json({ message: "Erreur lors de la lecture du dossier segments", error: err });
+      return res.status(500).json({
+        message: "Erreur lors de la lecture du dossier segments",
+        error: err,
+      });
     }
-    const videoFiles = files
-      .filter(file => file.endsWith(".mp4") || file.endsWith(".mkv") || file.endsWith(".avi") || file.endsWith(".mov"))
-      .map(file => `http://${localIp}:3000/uploads/segments/${encodeURIComponent(file)}`);
-    res.json(videoFiles);
+
+    const segmentFiles = folders.flatMap((folder) => {
+      const folderPath = path.join(segmentsDir, folder);
+      if (fs.lstatSync(folderPath).isDirectory()) {
+        const files = fs.readdirSync(folderPath);
+        return files
+          .filter((file) => [".mp4", ".mkv", ".avi", ".mov"].some((ext) => file.endsWith(ext)))
+          .map((file) => `http://${localIp}:3000/uploads/segments/${encodeURIComponent(folder)}/${encodeURIComponent(file)}`);
+      }
+      return [];
+    });
+
+    res.json(segmentFiles);
   });
 });
-// Adding the /test route
-app.use("/test", testRoute);
 
 const writeToEnvFile = (ip) => {
   const envFilePath = path.join(__dirname, "..", ".env");
@@ -175,6 +193,6 @@ app.listen(PORT, "0.0.0.0", () => {
 });
 
 app.use((req, res, next) => {
-  console.log(`Received request for: ${req.url}`);
+  console.log(`Requête reçue pour : ${req.url}`);
   next();
 });
