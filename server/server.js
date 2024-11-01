@@ -4,35 +4,25 @@ import path from "path";
 import fs from "fs";
 import cors from "cors";
 import helmet from "helmet";
-import os from "os";
+import dotenv from "dotenv";
+import { getLocalIpAddress } from "./utils/ipUtils.js";
+import { createDirectories, writeToEnvFile } from "./utils/fileUtils.js";
+import { segmentVideo } from "./utils/videoUtils.js";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
-import dotenv from "dotenv";
-import { exec } from "child_process";
-
 dotenv.config();
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const app = express();
 const PORT = 3000;
 
+const uploadsDir = path.join(__dirname, "uploads");
+const segmentsDir = path.join(uploadsDir, "segments");
+
+createDirectories(uploadsDir, segmentsDir);
 /*--------------------------ip-------------------------- */
-
-const getLocalIpAddress = () => {
-  const interfaces = os.networkInterfaces();
-  let ipAddress = null;
-
-  Object.keys(interfaces).forEach((interfaceName) => {
-    interfaces[interfaceName].forEach((iface) => {
-      if (!iface.internal && iface.family === "IPv4") {
-        ipAddress = iface.address;
-      }
-    });
-  });
-
-  return ipAddress;
-};
 
 const localIp = getLocalIpAddress();
 console.log(localIp);
@@ -43,13 +33,7 @@ app.get("/get-ip", (req, res) => {
   res.json({ ip });
 });
 
-/*-------------------------------file proprietess--------------------------- */
-
-const uploadsDir = path.join(__dirname, "uploads");
-const segmentsDir = path.join(uploadsDir, "segments");
-
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-if (!fs.existsSync(segmentsDir)) fs.mkdirSync(segmentsDir, { recursive: true });
+/*-------------------------------video files proprieties--------------------------- */
 
 fs.chmodSync(uploadsDir, 0o755);
 
@@ -94,28 +78,6 @@ const upload = multer({
     else cb(new Error("Format de fichier non pris en charge !"));
   },
 });
-
-const segmentVideo = (filePath, segmentFolder, segmentDuration = 10) => {
-  return new Promise((resolve, reject) => {
-    // Vérifiez que le dossier de segments existe déjà, sinon créez-le
-    if (!fs.existsSync(segmentFolder)) {
-      fs.mkdirSync(segmentFolder, { recursive: true });
-    }
-    fs.chmodSync(segmentFolder, 0o755);
-
-    const command = `ffmpeg -i "${filePath}" -c copy -map 0 -segment_time ${segmentDuration} -f segment "${segmentFolder}\\segment_%03d.mp4"`;
-
-    exec(command, (error, stdout, stderr) => {
-      if (error) {
-        console.error(`Erreur lors de l'exécution de FFmpeg `);
-        reject(error);
-      } else {
-        console.log(`Segmentation terminée`);
-        resolve("Segmentation réussie !");
-      }
-    });
-  });
-};
 
 /*-------------------------------post and get routes--------------------------- */
 
@@ -193,24 +155,14 @@ app.get("/segments", (req, res) => {
   });
 });
 
-const writeToEnvFile = (ip) => {
-  const envFilePath = path.join(__dirname, "..", ".env");
-  const content = `VITE_SERVER_IP="${ip}"\n`;
 
-  fs.writeFile(envFilePath, content, (err) => {
-    if (err) {
-      console.error("Erreur lors de l'écriture dans le fichier .env :", err);
-    } else {
-      console.log(`Adresse IP ${ip} écrite dans le fichier .env`);
-    }
-  });
-};
+/*server start------------------------------------------------------------- */
 
 app.listen(PORT, "0.0.0.0", () => {
-  writeToEnvFile(localIp);
+  writeToEnvFile(localIp, __dirname); 
   console.log(`Server running on http://${localIp}:${PORT}`);
-  
 });
+
 
 app.use((req, res, next) => {
   console.log(`Requête reçue pour : ${req.url}`);
