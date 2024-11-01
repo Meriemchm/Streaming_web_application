@@ -17,7 +17,7 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = 3000;
 
-
+/*--------------------------ip-------------------------- */
 
 const getLocalIpAddress = () => {
   const interfaces = os.networkInterfaces();
@@ -42,6 +42,8 @@ app.get("/get-ip", (req, res) => {
   const ip = getLocalIpAddress();
   res.json({ ip });
 });
+
+/*-------------------------------file proprietess--------------------------- */
 
 const uploadsDir = path.join(__dirname, "uploads");
 const segmentsDir = path.join(uploadsDir, "segments");
@@ -73,13 +75,12 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     const sanitizedFileName = file.originalname
-      .replace(/[^a-zA-Z0-9-_\.]/g, '-') // Remplace les caractères spéciaux par des tirets
-      .replace(/--+/g, '-') // Remplace les tirets consécutifs par un seul
-      .replace(/^-|-$/g, ''); // Supprime les tirets en début et fin de chaîne
+      .replace(/[^a-zA-Z0-9-_\.]/g, '-') 
+      .replace(/--+/g, '-') 
+      .replace(/^-|-$/g, ''); 
     cb(null, `${uniqueSuffix}-${sanitizedFileName}`);
   },
 });
-
 
 const upload = multer({
   storage: storage,
@@ -102,8 +103,6 @@ const segmentVideo = (filePath, segmentFolder, segmentDuration = 10) => {
     }
     fs.chmodSync(segmentFolder, 0o755);
 
-
-    // Commande FFmpeg pour segmenter la vidéo
     const command = `ffmpeg -i "${filePath}" -c copy -map 0 -segment_time ${segmentDuration} -f segment "${segmentFolder}\\segment_%03d.mp4"`;
 
     exec(command, (error, stdout, stderr) => {
@@ -118,6 +117,7 @@ const segmentVideo = (filePath, segmentFolder, segmentDuration = 10) => {
   });
 };
 
+/*-------------------------------post and get routes--------------------------- */
 
 app.post("/upload", upload.single("video"), async (req, res) => {
   try {
