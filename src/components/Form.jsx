@@ -11,7 +11,7 @@ const Form = () => {
     <div className="flex flex-col justify-center items-center w-full min-h-screen p-4 bg-gray-100">
       <form
         className="flex flex-col w-full max-w-md p-6 bg-white rounded-lg shadow-md"
-        action={`http://${apiUrl}:3000/test`}
+        action={`http://${apiUrl}:3000/upload`}
         method="POST"
         encType="multipart/form-data"
       >

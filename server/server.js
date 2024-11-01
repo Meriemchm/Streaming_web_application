@@ -17,6 +17,8 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = 3000;
 
+
+
 const getLocalIpAddress = () => {
   const interfaces = os.networkInterfaces();
   let ipAddress = null;
@@ -70,9 +72,14 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, `${uniqueSuffix}-${encodeURIComponent(file.originalname)}`);
+    const sanitizedFileName = file.originalname
+      .replace(/[^a-zA-Z0-9-_\.]/g, '-') // Remplace les caractères spéciaux par des tirets
+      .replace(/--+/g, '-') // Remplace les tirets consécutifs par un seul
+      .replace(/^-|-$/g, ''); // Supprime les tirets en début et fin de chaîne
+    cb(null, `${uniqueSuffix}-${sanitizedFileName}`);
   },
 });
+
 
 const upload = multer({
   storage: storage,
@@ -89,19 +96,28 @@ const upload = multer({
 
 const segmentVideo = (filePath, segmentFolder, segmentDuration = 10) => {
   return new Promise((resolve, reject) => {
-    const command = `ffmpeg -i "${filePath}" -c copy -map 0 -segment_time ${segmentDuration} -f segment "${segmentFolder}/segment_%03d.mp4"`;
+    // Vérifiez que le dossier de segments existe déjà, sinon créez-le
+    if (!fs.existsSync(segmentFolder)) {
+      fs.mkdirSync(segmentFolder, { recursive: true });
+    }
+    fs.chmodSync(segmentFolder, 0o755);
+
+
+    // Commande FFmpeg pour segmenter la vidéo
+    const command = `ffmpeg -i "${filePath}" -c copy -map 0 -segment_time ${segmentDuration} -f segment "${segmentFolder}\\segment_%03d.mp4"`;
 
     exec(command, (error, stdout, stderr) => {
       if (error) {
-        console.error(`Erreur lors de l'exécution de FFmpeg : ${error}`);
+        console.error(`Erreur lors de l'exécution de FFmpeg `);
         reject(error);
       } else {
-        console.log(`Segmentation terminée : ${stdout}`);
+        console.log(`Segmentation terminée`);
         resolve("Segmentation réussie !");
       }
     });
   });
 };
+
 
 app.post("/upload", upload.single("video"), async (req, res) => {
   try {
@@ -109,6 +125,8 @@ app.post("/upload", upload.single("video"), async (req, res) => {
     const videoName = path.basename(filePath, path.extname(filePath));
     const segmentFolder = path.join(segmentsDir, videoName);
 
+    console.log("Chemin de la vidéo :", filePath);
+    console.log("Dossier de destination des segments :", segmentFolder);
     if (!fs.existsSync(segmentFolder)) fs.mkdirSync(segmentFolder, { recursive: true });
 
     await segmentVideo(filePath, segmentFolder);
@@ -170,6 +188,7 @@ app.get("/segments", (req, res) => {
       return [];
     });
 
+
     res.json(segmentFiles);
   });
 });
@@ -190,6 +209,7 @@ const writeToEnvFile = (ip) => {
 app.listen(PORT, "0.0.0.0", () => {
   writeToEnvFile(localIp);
   console.log(`Server running on http://${localIp}:${PORT}`);
+  
 });
 
 app.use((req, res, next) => {
