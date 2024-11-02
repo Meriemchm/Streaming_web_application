@@ -1,6 +1,7 @@
 //import React from "react";
 import React, { useState, useEffect } from "react";
 import Content from "./Content";
+import VideoPlayerMain from "./VideoPlayerMain";
 
 const Form = () => {
   const [serverIp, setServerIp] = useState("");
@@ -8,7 +9,7 @@ const Form = () => {
   const apiUrl = import.meta.env.VITE_SERVER_IP ;
 
   return (
-    <div className="flex flex-col justify-center items-center w-full min-h-screen p-4 bg-gray-100">
+    <div className="flex flex-col justify-center items-center w-full min-h-screen md:p-4 bg-gray-100">
       <form
         className="flex flex-col w-full max-w-md p-6 bg-white rounded-lg shadow-md"
         action={`http://${apiUrl}:3000/upload`}
@@ -37,8 +38,8 @@ const Form = () => {
         </button>
       </form>
 
-      <div className="w-full max-w-4xl mt-10">
-        <Content />
+      <div >
+        <VideoPlayerMain />
       </div>
     </div>
   );
