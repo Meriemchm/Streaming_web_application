@@ -23,7 +23,7 @@ function VideoPlayer({ videoId }) {
       if (videoPlayerRef.current && videoSources.length > 0) {
         const currentSegmentUrl = videoSources[currentSegmentIndex];
         videoPlayerRef.current.src = currentSegmentUrl;
-        videoPlayerRef.current.play(); // Assurez-vous de jouer le segment chargé
+        videoPlayerRef.current.play(); 
       }
     };
     loadSegment();
