@@ -6,7 +6,7 @@ const Content = () => {
   const [serverIp, setServerIp] = useState("");
   const [videos, setVideos] = useState([]);
   const [error, setError] = useState(null);
-  const [debugMessage, setDebugMessage] = useState(""); // Pour afficher un message de débogage
+  const [debugMessage, setDebugMessage] = useState(""); 
 
   const apiUrl = import.meta.env.VITE_SERVER_IP;
   console.log(apiUrl ? 'no' : 'yes')
@@ -14,8 +14,8 @@ const Content = () => {
 
   useEffect(() => {
     const fetchVideos = async () => {
-      // Utilise des backticks pour interpoler serverIp
-      setDebugMessage("Je suis dans fetchVideos"); // Définir un message de débogage
+
+      setDebugMessage("Je suis dans fetchVideos"); 
 
       try {
         console.log(`Fetching videos from: ${apiUrl}/getvideo`);
@@ -37,11 +37,11 @@ const Content = () => {
 
     fetchVideos();
 
-  }, [serverIp]); // fetchVideos dépend de serverIp
+  }, [serverIp]); 
 
   return (
     <div className="w-full p-4">
-      {/* Afficher le message de débogage */}
+
       <h1>{debugMessage}</h1>
 
       {error && <p className="text-red-500">{error}</p>}
