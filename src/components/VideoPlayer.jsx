@@ -1,12 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  checkBandwidthWithFirstSegment,
-  loadVideoSegments,
-  calculateTotalDuration,
-} from "./videoUtils";
+import { calculateTotalDuration,loadVideoSegments,generateThumbnails } from "./videoUtils";
 
 function VideoPlayer({ videoId }) {
-  const [resolution, setResolution] = useState("480p");
+  const [resolutions, setResolutions] = useState([]); // Available resolutions
+  const [resolution, setResolution] = useState("");
   const [videoSources, setVideoSources] = useState([]);
   const [thumbnails, setThumbnails] = useState([]);
   const [currentSegmentIndex, setCurrentSegmentIndex] = useState(0);
@@ -14,19 +11,40 @@ function VideoPlayer({ videoId }) {
   const videoPlayerRef = useRef(null);
   const serverIp = import.meta.env.VITE_SERVER_IP;
 
+  // Fetch available resolutions
   useEffect(() => {
-    //checkBandwidthWithFirstSegment(serverIp, videoId, setResolution);
-    loadVideoSegments(
-      serverIp,
-      videoId,
-      resolution,
-      setVideoSources,
-      setCurrentSegmentIndex,
-      (segments) => {
-        calculateTotalDuration(segments, setTotalDuration);
-        generateThumbnails(segments); // Générer image pour chaque segment
+    const fetchResolutions = async () => {
+      try {
+        const response = await fetch(`http://${serverIp}:3000/video/resolutions/${videoId}`);
+        const data = await response.json();
+        if (response.ok) {
+          setResolutions(data.resolutions);
+          setResolution(data.resolutions[0] || "480p"); // Select the first available resolution
+        } else {
+          console.error(data.error);
+        }
+      } catch (error) {
+        console.error("Error fetching resolutions:", error);
       }
-    );
+    };
+    fetchResolutions();
+  }, [videoId]);
+
+  // Load video segments based on resolution
+  useEffect(() => {
+    if (resolution) {
+      loadVideoSegments(
+        serverIp,
+        videoId,
+        resolution,
+        setVideoSources,
+        setCurrentSegmentIndex,
+        (segments) => {
+          calculateTotalDuration(segments, setTotalDuration);
+          generateThumbnails(segments, setThumbnails); // Generate thumbnails
+        }
+      );
+    }
   }, [resolution]);
 
   useEffect(() => {
@@ -45,7 +63,7 @@ function VideoPlayer({ videoId }) {
       if (prevIndex < videoSources.length - 1) {
         return prevIndex + 1;
       } else {
-        return 0;
+        return 0; // Loop to the first segment
       }
     });
   };
@@ -67,86 +85,44 @@ function VideoPlayer({ videoId }) {
     setCurrentSegmentIndex(newIndex);
   };
 
-  // Fonction pour générer image à partir d'un segment vidéo
-  const generateThumbnailFromVideo = (videoUrl, time) => {
-    const video = document.createElement("video");
-    video.src = videoUrl;
-    video.currentTime = time;
-    video.crossOrigin = "anonymous"; 
-
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
-
-    return new Promise((resolve) => {
-      video.onloadeddata = () => {
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const thumbnailUrl = canvas.toDataURL("image/png");
-        resolve(thumbnailUrl);
-      };
-    });
-  };
-
-  // Fimage pour tous les segments
-  const generateThumbnails = (segments) => {
-    const thumbnailPromises = segments.map((segmentUrl, index) => {
-      return generateThumbnailFromVideo(segmentUrl, 2) // Capturer une image au temps 2 secondes
-        .then((thumbnailUrl) => {
-          return { index, thumbnailUrl };
-        });
-    });
-
-    Promise.all(thumbnailPromises).then((thumbnailsData) => {
-      setThumbnails(thumbnailsData);
-    });
-  };
-
-  // en cliquant sur l'image
   const goToSegment = (index) => {
     setCurrentSegmentIndex(index);
   };
 
-  // changer la résolution
   const handleResolutionChange = (event) => {
     setResolution(event.target.value);
   };
 
   return (
     <div className="flex flex-col md:flex-row items-center justify-center p-4 bg-gray-100">
-      <div className="flex flex-col items-center justify-center ">
-        {/* Dropdown*/}
+      <div className="flex flex-col items-center justify-center">
+        {/* Dynamic dropdown for resolutions */}
         <select
           value={resolution}
           onChange={handleResolutionChange}
           className="mb-4 p-2 border rounded"
         >
-          <option value="480p">480p</option>
-          <option value="720p">720p</option>
-          <option value="1080p">1080p</option>
+          {resolutions.map((res) => (
+            <option key={res} value={res}>
+              {res}
+            </option>
+          ))}
         </select>
 
-        {/* Lecteur vidéo */}
+        {/* Video player */}
         <video
           ref={videoPlayerRef}
           controls
           className="w-full mb-4 rounded-lg shadow-lg"
-          crossOrigin="anonymous" // CORS
+          crossOrigin="anonymous"
         />
 
         <div className="text-center">
           <p className="text-lg font-semibold">
-            Total Duration:{" "}
-            <span className="font-normal">
-              {totalDuration.toFixed(2)} seconds
-            </span>
+            Total Duration: {totalDuration.toFixed(2)} seconds
           </p>
           <p className="text-lg font-semibold">
-            Resolution: <span className="font-normal">{resolution}</span>
-          </p>
-          <p className="text-lg font-semibold">
-            Current Segment:{" "}
-            <span className="font-normal">
-              {currentSegmentIndex + 1} of {videoSources.length}
-            </span>
+            Current Segment: {currentSegmentIndex + 1} of {videoSources.length}
           </p>
           <input
             type="range"
@@ -159,7 +135,7 @@ function VideoPlayer({ videoId }) {
         </div>
       </div>
 
-      {/* images */}
+      {/* Thumbnails of the segments */}
       <div className="mt-4">
         <div className="flex md:flex-col justify-center items-center">
           {thumbnails.map(({ index, thumbnailUrl }) => (

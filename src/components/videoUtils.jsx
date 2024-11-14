@@ -32,23 +32,37 @@ export async function checkBandwidthWithFirstSegment(serverIp, videoId, setResol
     }
   }
   
-  export async function loadVideoSegments(serverIp, videoId, resolution, setVideoSources, setCurrentSegmentIndex, calculateTotalDuration) {
-    try {
-      const response = await fetch(
-        `http://${serverIp}:3000/segments?videoId=${videoId}&resolution=${resolution}`
-      );
-      if (!response.ok) throw new Error(`Server error: ${response.status}`);
-  
-      const segments = await response.json();
-      if (Array.isArray(segments)) {
-        setVideoSources(segments);
-        setCurrentSegmentIndex(0);
-        calculateTotalDuration(segments);
-      }
-    } catch (error) {
-      console.error("Failed to load video segments:", error);
-    }
+// Charge les segments vidéo en fonction de la résolution
+export const loadVideoSegments = async (
+  serverIp,
+  videoId,
+  resolution,
+  setVideoSources,
+  setCurrentSegmentIndex,
+  calculateTotalDuration
+) => {
+  try {
+    const response = await fetch(`http://${serverIp}:3000/segmentsList/${videoId}`);
+    if (!response.ok) throw new Error("Error loading segment list");
+
+    const segmentsList = await response.json();
+    const segmentUrls = segmentsList.map((segment) =>
+      `http://${serverIp}:3000/uploads/segments/${videoId}/${resolution}/${segment}`
+    );
+
+    setVideoSources(segmentUrls);
+
+    // Si le segment actuel est toujours valide dans la nouvelle liste, on garde cet index
+    setCurrentSegmentIndex((prevIndex) => 
+      prevIndex < segmentUrls.length ? prevIndex : 0
+    );
+
+    calculateTotalDuration(segmentUrls);
+  } catch (error) {
+    console.error("Failed to load video segments:", error);
   }
+};
+  
   
   export const getVideoDuration = (url) => {
     return new Promise((resolve) => {
@@ -68,6 +82,39 @@ export async function calculateTotalDuration(segments, setTotalDuration) {
   }
   setTotalDuration(total);
 }
+
+// Function to generate thumbnails for video segments
+const generateThumbnailFromVideo = (videoUrl, time) => {
+  const video = document.createElement("video");
+  video.src = videoUrl;
+  video.currentTime = time;
+  video.crossOrigin = "anonymous";
+
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  return new Promise((resolve) => {
+    video.onloadeddata = () => {
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const thumbnailUrl = canvas.toDataURL("image/png");
+      resolve(thumbnailUrl);
+    };
+  });
+};
+
+// Generate thumbnails for all video segments
+export const generateThumbnails = (segments, setThumbnails) => {
+  const thumbnailPromises = segments.map((segmentUrl, index) => {
+    return generateThumbnailFromVideo(segmentUrl, 2) // Capture a thumbnail at 2 seconds
+      .then((thumbnailUrl) => {
+        return { index, thumbnailUrl };
+      });
+  });
+
+  Promise.all(thumbnailPromises).then((thumbnailsData) => {
+    setThumbnails(thumbnailsData);  // Update state in parent component
+  });
+};
 
 
 

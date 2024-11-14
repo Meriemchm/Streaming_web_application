@@ -81,6 +81,42 @@ const upload = multer({
   },
 });
 
+
+const generateSegmentListFile = (videoId) => {
+  // Chemin du dossier où les segments sont stockés
+  const videoFolder = path.join(__dirname, 'uploads', 'segments', videoId);
+  
+  // Les différentes résolutions que tu pourrais avoir
+  const resolutions = ['480p', '720p', '1080p'];
+
+  let segmentList = new Set();  // Use a Set to automatically remove duplicates
+
+  // Lire les segments dans chaque dossier de résolution
+  resolutions.forEach((resolution) => {
+    const resolutionPath = path.join(videoFolder, resolution);
+
+    if (fs.existsSync(resolutionPath)) {
+      const files = fs.readdirSync(resolutionPath);
+      
+      // Filtrer uniquement les fichiers .mp4 et les ajouter à la liste (Set)
+      files
+        .filter((file) => file.endsWith('.mp4'))
+        .forEach((file) => segmentList.add(file)); // Add to Set, duplicates are ignored
+    }
+  });
+
+  // Convert Set to array and join the segments
+  const fileContent = Array.from(segmentList).join('\n');
+
+  // Chemin du fichier texte à générer
+  const outputPath = path.join(videoFolder, 'segments_list.txt');
+
+  // Écrire le contenu dans le fichier texte
+  fs.writeFileSync(outputPath, fileContent, 'utf8');
+
+  console.log(`Fichier texte généré : ${outputPath}`);
+};
+
 /*-------------------------------post and get routes--------------------------- */
 
 app.post("/upload", upload.single("video"), async (req, res) => {
@@ -89,24 +125,35 @@ app.post("/upload", upload.single("video"), async (req, res) => {
     const videoName = path.basename(filePath, path.extname(filePath));
     const segmentFolder = path.join(segmentsDir, videoName);
 
+    const { startTime, endTime } = req.body;
+    const resolutions = JSON.parse(req.body.resolutions || "[]");
+
     console.log("Chemin de la vidéo :", filePath);
-    console.log("Dossier de destination des segments :", segmentFolder);
+    console.log("Résolutions choisies :", resolutions);
+
     if (!fs.existsSync(segmentFolder))
       fs.mkdirSync(segmentFolder, { recursive: true });
 
-    await segmentVideo(filePath, segmentFolder);
+    // Segmenter la vidéo
+    await segmentVideo(filePath, segmentFolder, startTime, endTime, resolutions);
+
+    // Générer la liste des segments après la segmentation
+    generateSegmentListFile(videoName);
 
     res.status(200).json({
       message: "Vidéo téléversée et segmentée avec succès",
       file: req.file,
     });
   } catch (error) {
+    console.error("Erreur sur le serveur :", error);
     res.status(500).json({
       message: "Erreur lors du téléversement ou de la segmentation de la vidéo",
-      error,
+      error: error.message,
     });
   }
 });
+
+
 
 app.get("/getvideo", (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -192,6 +239,39 @@ app.get("/segments", (req, res) => {
     res.json(segmentFiles); // Renvoie les URLs des segments
   });
 });
+
+
+// Nouvelle route pour obtenir les résolutions disponibles
+app.get("/video/resolutions/:videoId", (req, res) => {
+  const { videoId } = req.params;
+  const videoPath = path.join(segmentsDir, videoId);
+
+  // Vérifie si le dossier existe
+  if (fs.existsSync(videoPath)) {
+    // Lis les sous-dossiers (résolutions)
+    const availableResolutions = fs
+      .readdirSync(videoPath)
+      .filter((folder) => fs.lstatSync(path.join(videoPath, folder)).isDirectory());
+    res.status(200).json({ resolutions: availableResolutions });
+  } else {
+    res.status(404).json({ error: "Video not found" });
+  }
+});
+
+app.get("/segmentsList/:videoId", (req, res) => {
+  const videoId = req.params.videoId;
+  const videoFolder = path.join(__dirname, 'uploads', 'segments', videoId);
+  const filePath = path.join(videoFolder, 'segments_list.txt');
+
+  if (fs.existsSync(filePath)) {
+    const segmentsList = fs.readFileSync(filePath, 'utf8').split('\n');
+    res.json(segmentsList);
+  } else {
+    res.status(404).json({ error: 'Segment list file not found' });
+  }
+});
+
+
 
 /*server start------------------------------------------------------------- */
 
