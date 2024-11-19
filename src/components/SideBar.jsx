@@ -1,15 +1,13 @@
 import { useState } from "react";
 import { SideBarData } from "./Data";
-import { NavLink, useNavigate,useLocation } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { Outlet } from "react-router-dom";
-
+import NavBarDash from "./NavBarDash";
 
 const SideBar = () => {
-
   const [activeItem, setActiveItem] = useState(1);
   const location = useLocation();
   const currentPath = location.pathname.split("/").pop();
-
 
   return (
     <div className="flex h-full w-full overflow-hidden ">
@@ -37,10 +35,9 @@ const SideBar = () => {
                         : ""
                     }`}
                     onClick={() => {
-                      setActiveItem(id)
+                      setActiveItem(id);
                     }}
                   >
-      
                     <p className={`self-center ${style} `}>{link}</p>
                   </li>
                 </ul>
@@ -54,6 +51,7 @@ const SideBar = () => {
        */}
 
       <div className="flex flex-col flex-1">
+        <NavBarDash />
         <div className="flex-1">
           <Outlet />
         </div>

@@ -1,25 +1,32 @@
 import React, { useState, useEffect, useRef } from "react";
-import { calculateTotalDuration,loadVideoSegments,generateThumbnails } from "./videoUtils";
+import {
+  calculateTotalDuration,
+  loadVideoSegments,
+  generateThumbnails,
+} from "./videoUtils";
 
 function VideoPlayer({ videoId }) {
-  const [resolutions, setResolutions] = useState([]); // Available resolutions
+  const [resolutions, setResolutions] = useState([]);
   const [resolution, setResolution] = useState("");
   const [videoSources, setVideoSources] = useState([]);
   const [thumbnails, setThumbnails] = useState([]);
   const [currentSegmentIndex, setCurrentSegmentIndex] = useState(0);
   const [totalDuration, setTotalDuration] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false); 
   const videoPlayerRef = useRef(null);
   const serverIp = import.meta.env.VITE_SERVER_IP;
 
-  // Fetch available resolutions
+  // Fetch resolutions
   useEffect(() => {
     const fetchResolutions = async () => {
       try {
-        const response = await fetch(`http://${serverIp}:3000/video/resolutions/${videoId}`);
+        const response = await fetch(
+          `http://${serverIp}:3000/video/resolutions/${videoId}`
+        );
         const data = await response.json();
         if (response.ok) {
           setResolutions(data.resolutions);
-          setResolution(data.resolutions[0] || "480p"); // Select the first available resolution
+          setResolution(data.resolutions[0] || "480p");
         } else {
           console.error(data.error);
         }
@@ -30,7 +37,7 @@ function VideoPlayer({ videoId }) {
     fetchResolutions();
   }, [videoId]);
 
-  // Load video segments based on resolution
+  // Load video segments
   useEffect(() => {
     if (resolution) {
       loadVideoSegments(
@@ -41,44 +48,57 @@ function VideoPlayer({ videoId }) {
         setCurrentSegmentIndex,
         (segments) => {
           calculateTotalDuration(segments, setTotalDuration);
-          generateThumbnails(segments, setThumbnails); // Generate thumbnails
+          generateThumbnails(segments, setThumbnails);
         }
       );
     }
   }, [resolution]);
 
+  // segments 
   useEffect(() => {
-    const loadSegment = async () => {
+    const loadSegment = () => {
       if (videoPlayerRef.current && videoSources.length > 0) {
         const currentSegmentUrl = videoSources[currentSegmentIndex];
         videoPlayerRef.current.src = currentSegmentUrl;
-        videoPlayerRef.current.play();
+
+        if (isPlaying) {
+          videoPlayerRef.current.play();
+        }
       }
     };
     loadSegment();
-  }, [currentSegmentIndex, videoSources]);
+  }, [currentSegmentIndex, videoSources, isPlaying]);
+
 
   const handleVideoEnd = () => {
     setCurrentSegmentIndex((prevIndex) => {
       if (prevIndex < videoSources.length - 1) {
-        return prevIndex + 1;
+        return prevIndex + 1; 
       } else {
-        return 0; // Loop to the first segment
+        return 0; // dernier 
       }
     });
   };
+
+  //play handle
 
   useEffect(() => {
     const videoPlayer = videoPlayerRef.current;
     if (videoPlayer) {
       videoPlayer.addEventListener("ended", handleVideoEnd);
+      videoPlayer.addEventListener("play", () => setIsPlaying(true)); 
     }
     return () => {
       if (videoPlayer) {
         videoPlayer.removeEventListener("ended", handleVideoEnd);
+        videoPlayer.removeEventListener("play", () => setIsPlaying(true));
       }
     };
   }, [videoSources]);
+
+  const handleResolutionChange = (event) => {
+    setResolution(event.target.value);
+  };
 
   const handleSliderChange = (event) => {
     const newIndex = parseInt(event.target.value, 10);
@@ -89,14 +109,10 @@ function VideoPlayer({ videoId }) {
     setCurrentSegmentIndex(index);
   };
 
-  const handleResolutionChange = (event) => {
-    setResolution(event.target.value);
-  };
-
   return (
     <div className="flex flex-col md:flex-row items-center justify-center p-4 bg-gray-100">
       <div className="flex flex-col items-center justify-center">
-        {/* Dynamic dropdown for resolutions */}
+        {/* Dropdown for resolution */}
         <select
           value={resolution}
           onChange={handleResolutionChange}
@@ -109,7 +125,7 @@ function VideoPlayer({ videoId }) {
           ))}
         </select>
 
-        {/* Video player */}
+        {/* Video Player */}
         <video
           ref={videoPlayerRef}
           controls
@@ -135,7 +151,7 @@ function VideoPlayer({ videoId }) {
         </div>
       </div>
 
-      {/* Thumbnails of the segments */}
+      {/* images */}
       <div className="mt-4">
         <div className="flex md:flex-col justify-center items-center">
           {thumbnails.map(({ index, thumbnailUrl }) => (

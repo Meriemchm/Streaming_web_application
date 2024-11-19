@@ -32,7 +32,7 @@ export async function checkBandwidthWithFirstSegment(serverIp, videoId, setResol
     }
   }
   
-// Charge les segments vidéo en fonction de la résolution
+// Charge segments vidéo en fon rsolution
 export const loadVideoSegments = async (
   serverIp,
   videoId,
@@ -43,16 +43,20 @@ export const loadVideoSegments = async (
 ) => {
   try {
     const response = await fetch(`http://${serverIp}:3000/segmentsList/${videoId}`);
+    
     if (!response.ok) throw new Error("Error loading segment list");
 
     const segmentsList = await response.json();
+    console.log(segmentsList)
+    //loop to
     const segmentUrls = segmentsList.map((segment) =>
       `http://${serverIp}:3000/uploads/segments/${videoId}/${resolution}/${segment}`
     );
+    console.log(segmentUrls)
 
     setVideoSources(segmentUrls);
 
-    // Si le segment actuel est toujours valide dans la nouvelle liste, on garde cet index
+    // currentindex
     setCurrentSegmentIndex((prevIndex) => 
       prevIndex < segmentUrls.length ? prevIndex : 0
     );
@@ -83,7 +87,8 @@ export async function calculateTotalDuration(segments, setTotalDuration) {
   setTotalDuration(total);
 }
 
-// Function to generate thumbnails for video segments
+//image
+
 const generateThumbnailFromVideo = (videoUrl, time) => {
   const video = document.createElement("video");
   video.src = videoUrl;
@@ -101,18 +106,16 @@ const generateThumbnailFromVideo = (videoUrl, time) => {
     };
   });
 };
-
-// Generate thumbnails for all video segments
 export const generateThumbnails = (segments, setThumbnails) => {
   const thumbnailPromises = segments.map((segmentUrl, index) => {
-    return generateThumbnailFromVideo(segmentUrl, 2) // Capture a thumbnail at 2 seconds
+    return generateThumbnailFromVideo(segmentUrl, 2)
       .then((thumbnailUrl) => {
         return { index, thumbnailUrl };
       });
   });
 
   Promise.all(thumbnailPromises).then((thumbnailsData) => {
-    setThumbnails(thumbnailsData);  // Update state in parent component
+    setThumbnails(thumbnailsData);  
   });
 };
 

@@ -134,10 +134,16 @@ app.post("/upload", upload.single("video"), async (req, res) => {
     if (!fs.existsSync(segmentFolder))
       fs.mkdirSync(segmentFolder, { recursive: true });
 
-    // Segmenter la vidéo
-    await segmentVideo(filePath, segmentFolder, startTime, endTime, resolutions);
+    // Segmenter 
+    await segmentVideo(
+      filePath,
+      segmentFolder,
+      Number(startTime),
+      Number(endTime),
+      resolutions
+    );
 
-    // Générer la liste des segments après la segmentation
+    // liste
     generateSegmentListFile(videoName);
 
     res.status(200).json({
@@ -152,7 +158,6 @@ app.post("/upload", upload.single("video"), async (req, res) => {
     });
   }
 });
-
 
 
 app.get("/getvideo", (req, res) => {
@@ -214,10 +219,10 @@ app.get("/segments", (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST");
 
-  const videoId = req.query.videoId; // ID de la vidéo
-  const resolution = req.query.resolution; // Résolution demandée
+  const videoId = req.query.videoId; 
+  const resolution = req.query.resolution; // Résolution 
 
-  const resolutionDir = path.join(segmentsDir, videoId, resolution); // Dossier de la résolution pour cette vidéo
+  const resolutionDir = path.join(segmentsDir, videoId, resolution); // Dossier rsolution pr video
 
   fs.readdir(resolutionDir, (err, files) => {
     if (err) {
@@ -228,7 +233,7 @@ app.get("/segments", (req, res) => {
     }
     console.log(files);
     const segmentFiles = files
-      .filter((file) => file.endsWith(".mp4")) // Filtre les fichiers vidéo
+      .filter((file) => file.endsWith(".mp4")) // Filtre les fichiers
       .map(
         (file) =>
           `http://${localIp}:3000/uploads/segments/${videoId}/${resolution}/${encodeURIComponent(
@@ -236,19 +241,19 @@ app.get("/segments", (req, res) => {
           )}`
       );
 
-    res.json(segmentFiles); // Renvoie les URLs des segments
+    res.json(segmentFiles); 
   });
 });
 
 
-// Nouvelle route pour obtenir les résolutions disponibles
+// résolutions hna
 app.get("/video/resolutions/:videoId", (req, res) => {
   const { videoId } = req.params;
   const videoPath = path.join(segmentsDir, videoId);
 
-  // Vérifie si le dossier existe
+  
   if (fs.existsSync(videoPath)) {
-    // Lis les sous-dossiers (résolutions)
+    // sous dossiers resolutions
     const availableResolutions = fs
       .readdirSync(videoPath)
       .filter((folder) => fs.lstatSync(path.join(videoPath, folder)).isDirectory());
@@ -257,6 +262,9 @@ app.get("/video/resolutions/:videoId", (req, res) => {
     res.status(404).json({ error: "Video not found" });
   }
 });
+
+//hadi la lste des segments t3 plaulist
+
 
 app.get("/segmentsList/:videoId", (req, res) => {
   const videoId = req.params.videoId;
@@ -270,8 +278,6 @@ app.get("/segmentsList/:videoId", (req, res) => {
     res.status(404).json({ error: 'Segment list file not found' });
   }
 });
-
-
 
 /*server start------------------------------------------------------------- */
 

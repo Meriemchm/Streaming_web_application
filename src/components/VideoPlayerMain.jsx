@@ -35,16 +35,12 @@ const VideoPlayerMain = () => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4 md:p-12 bg-gray-100">
-      {/* Display errors if necessary */}
-      {/* {error && <p className="text-red-600">Error: {error}</p>} */}
   
       {videos && Object.keys(videos).map((folderName, index) => (
         <div
           key={index}
           className="w-full max-w-3xl mb-6 p-4 border border-gray-300 rounded-lg bg-white shadow-md"
         >
-          {/* <h2 className="text-xl font-bold mb-2">{folderName}</h2> */}
-  
           {videos[folderName].map((videoUrl, idx) => (
             <div key={idx} className="mb-4">
               <p className="text-gray-700">

@@ -9,12 +9,11 @@ const Form = () => {
   const [startTime, setStartTime] = useState(0);
   const [endTime, setEndTime] = useState(0);
   const [videoFile, setVideoFile] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const apiUrl = import.meta.env.VITE_SERVER_IP;
 
-  // Référence pour l'élément vidéo
   const videoRef = useRef(null);
 
-  // Gérer le changement des résolutions sélectionnées
   const handleResolutionChange = (event) => {
     const { name, checked } = event.target;
     setSelectedResolutions((prevState) => ({
@@ -23,7 +22,6 @@ const Form = () => {
     }));
   };
 
-  // Gérer le téléversement de la vidéo
   const handleUpload = async (e) => {
     e.preventDefault();
 
@@ -37,13 +35,13 @@ const Form = () => {
     formData.append("startTime", startTime);
     formData.append("endTime", endTime);
 
-    // Ajout des résolutions sélectionnées
     const selectedRes = Object.keys(selectedResolutions).filter(
       (key) => selectedResolutions[key]
     );
     formData.append("resolutions", JSON.stringify(selectedRes));
 
     try {
+      setIsProcessing(true);
       const response = await fetch(`http://${apiUrl}:3000/upload`, {
         method: "POST",
         body: formData,
@@ -59,91 +57,91 @@ const Form = () => {
     } catch (error) {
       console.error("Erreur lors du téléversement :", error);
       alert("Erreur lors du téléversement de la vidéo.");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
-  // Mettre à jour la durée de la vidéo lorsque le fichier est sélectionné
   const handleVideoChange = (e) => {
     const file = e.target.files[0];
     setVideoFile(file);
-
-    // Charger la vidéo et obtenir sa durée
     const video = videoRef.current;
     video.src = URL.createObjectURL(file);
     video.onloadedmetadata = () => {
-      setEndTime(Math.floor(video.duration));  // Arrondir la durée à un entier
+      setEndTime(Math.floor(video.duration)); //  entier
     };
   };
 
   return (
-    <div className="flex flex-col justify-center items-center w-full min-h-screen p-4 bg-gray-100">
+    <div className="flex flex-col md:justify-center items-center w-full min-h-screen bg-gray-100">
       <form
-        className="flex flex-col w-full max-w-md p-6 bg-white rounded-lg shadow-md"
+        className="flex flex-col w-full max-w-md bg-white rounded-lg shadow-md"
         onSubmit={handleUpload}
       >
-        <label className="mb-4 text-lg font-semibold text-gray-700">
-          Sélectionnez une vidéo :
-        </label>
-        <input
-          type="file"
-          name="video"
-          accept="video/*"
-          onChange={handleVideoChange} // Utilisez la fonction handleVideoChange
-          className="py-2 px-4 mb-6 border border-gray-300 rounded-lg"
-          required
-        />
-        {/* Ajoutez l'élément vidéo pour récupérer la durée */}
-        <video ref={videoRef} className="hidden" />
+        <div className="flex flex-col justify-center mx-auto w-full p-6 sm:p-12">
+          <label className="mb-4 text-lg font-semibold text-gray-700">
+            Sélectionnez une vidéo :
+          </label>
+          <input
+            type="file"
+            name="video"
+            accept="video/*"
+            onChange={handleVideoChange}
+            className="py-2 px-4 mb-6 border border-gray-300 rounded-lg w-full"
+            required
+          />
 
-        {/* Sélection des résolutions */}
-        <label className="mb-4 text-lg font-semibold text-gray-700">
-          Choisissez les résolutions :
-        </label>
-        <div className="flex flex-col mb-6">
-          {["480p", "720p", "1080p"].map((res) => (
-            <div key={res} className="flex items-center mb-2">
+          <video ref={videoRef} className="hidden" />
+
+          <label className="mb-4 text-lg font-semibold text-gray-700">
+            Choisissez les résolutions :
+          </label>
+          <div className="flex flex-col mb-6">
+            {["480p", "720p", "1080p"].map((res) => (
+              <div key={res} className="flex items-center mb-2">
+                <input
+                  type="checkbox"
+                  name={res}
+                  checked={selectedResolutions[res]}
+                  onChange={handleResolutionChange}
+                  className="mr-2"
+                />
+                <label>{res}</label>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:space-x-4 mb-5">
+            <div className="flex flex-col mb-4 sm:mb-0 w-full sm:w-1/2">
+              <label>Début (s) :</label>
               <input
-                type="checkbox"
-                name={res}
-                checked={selectedResolutions[res]}
-                onChange={handleResolutionChange}
-                className="mr-2"
+                type="number"
+                min="0"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className="py-2 px-4 border border-gray-300 rounded-lg w-full sm:w-36"
               />
-              <label>{res}</label>
             </div>
-          ))}
-        </div>
-
-        {/* Sélection de la plage temporelle */}
-        <div className="flex space-x-4 mb-6">
-          <div className="flex flex-col">
-            <label>Début (s) :</label>
-            <input
-              type="number"
-              min="0"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              className="py-2 px-4 border border-gray-300 rounded-lg"
-            />
+            <div className="flex flex-col w-full sm:w-1/2">
+              <label>Fin (s) :</label>
+              <input
+                type="number"
+                min="0"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className="py-2 px-4 border border-gray-300 rounded-lg w-full sm:w-36"
+              />
+            </div>
           </div>
-          <div className="flex flex-col">
-            <label>Fin (s) :</label>
-            <input
-              type="number"
-              min="0"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              className="py-2 px-4 border border-gray-300 rounded-lg"
-            />
-          </div>
-        </div>
 
-        <button
-          type="submit"
-          className="py-2 px-4 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-500"
-        >
-          Téléverser la vidéo
-        </button>
+          <button
+            type="submit"
+            className="py-2 px-4 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-500 w-full sm:w-auto"
+            disabled={isProcessing}
+          >
+            {isProcessing ? "Veuillez patienter..." : "Téléverser la vidéo"}
+          </button>
+        </div>
       </form>
     </div>
   );
