@@ -3,6 +3,7 @@ import {
   calculateTotalDuration,
   loadVideoSegments,
   generateThumbnails,
+  checkSegmentExists,
 } from "./videoUtils";
 
 function VideoPlayer({ videoId }) {
@@ -12,7 +13,7 @@ function VideoPlayer({ videoId }) {
   const [thumbnails, setThumbnails] = useState([]);
   const [currentSegmentIndex, setCurrentSegmentIndex] = useState(0);
   const [totalDuration, setTotalDuration] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false); 
+  const [isPlaying, setIsPlaying] = useState(false);
   const videoPlayerRef = useRef(null);
   const serverIp = import.meta.env.VITE_SERVER_IP;
 
@@ -54,12 +55,37 @@ function VideoPlayer({ videoId }) {
     }
   }, [resolution]);
 
-  // segments 
+  const loadValidSegment = async (videoSources, currentIndex) => {
+    while (currentIndex < videoSources.length) {
+      const segmentUrl = videoSources[currentIndex];
+      const exists = await checkSegmentExists(segmentUrl);
+      if (exists) {
+        return currentIndex; // existe
+      }
+      // passe au suivant
+      currentIndex++;
+    }
+    return -1; // d=fin
+  };
+
+  // segments
   useEffect(() => {
-    const loadSegment = () => {
+    const loadSegment = async () => {
       if (videoPlayerRef.current && videoSources.length > 0) {
-        const currentSegmentUrl = videoSources[currentSegmentIndex];
-        videoPlayerRef.current.src = currentSegmentUrl;
+        let validIndex = await loadValidSegment(
+          videoSources,
+          currentSegmentIndex
+        );
+
+        // valid
+        if (validIndex !== -1) {
+          const currentSegmentUrl = videoSources[validIndex];
+          videoPlayerRef.current.src = currentSegmentUrl;
+          setCurrentSegmentIndex(validIndex); // ma segment actuel
+        } else {
+          // debut
+          setCurrentSegmentIndex(0);
+        }
 
         if (isPlaying) {
           videoPlayerRef.current.play();
@@ -69,13 +95,12 @@ function VideoPlayer({ videoId }) {
     loadSegment();
   }, [currentSegmentIndex, videoSources, isPlaying]);
 
-
   const handleVideoEnd = () => {
     setCurrentSegmentIndex((prevIndex) => {
       if (prevIndex < videoSources.length - 1) {
-        return prevIndex + 1; 
+        return prevIndex + 1;
       } else {
-        return 0; // dernier 
+        return 0; // dernier
       }
     });
   };
@@ -86,7 +111,7 @@ function VideoPlayer({ videoId }) {
     const videoPlayer = videoPlayerRef.current;
     if (videoPlayer) {
       videoPlayer.addEventListener("ended", handleVideoEnd);
-      videoPlayer.addEventListener("play", () => setIsPlaying(true)); 
+      videoPlayer.addEventListener("play", () => setIsPlaying(true));
     }
     return () => {
       if (videoPlayer) {
@@ -99,10 +124,12 @@ function VideoPlayer({ videoId }) {
   const handleResolutionChange = (event) => {
     setResolution(event.target.value);
   };
-
-  const handleSliderChange = (event) => {
-    const newIndex = parseInt(event.target.value, 10);
-    setCurrentSegmentIndex(newIndex);
+  const handleSliderChange = async (event) => {
+    let newIndex = parseInt(event.target.value, 10);
+    let validIndex = await loadValidSegment(videoSources, newIndex);
+    if (validIndex !== -1) {
+      setCurrentSegmentIndex(validIndex);
+    }
   };
 
   const goToSegment = (index) => {
@@ -151,18 +178,19 @@ function VideoPlayer({ videoId }) {
         </div>
       </div>
 
-      {/* images */}
       <div className="mt-4">
         <div className="flex md:flex-col justify-center items-center">
-          {thumbnails.map(({ index, thumbnailUrl }) => (
+          {thumbnails.map(({ index, thumbnailUrl, isAvailable }) => (
             <button
               key={index}
-              onClick={() => goToSegment(index)}
+              onClick={isAvailable ? () => goToSegment(index) : undefined} // Disable click if not available
               className={`border-2 ${
                 currentSegmentIndex === index
                   ? "border-blue-500"
                   : "border-transparent"
-              } rounded-md`}
+              } rounded-md ${
+                isAvailable ? "" : "opacity-50 cursor-not-allowed"
+              }`} // Disable style
             >
               <img
                 src={thumbnailUrl}

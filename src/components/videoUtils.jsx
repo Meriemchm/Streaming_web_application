@@ -1,5 +1,7 @@
 // videoUtils.js
 
+import notfind from '../assets/notFind.jpg'
+
 export async function checkBandwidthWithFirstSegment(serverIp, videoId, setResolution) {
     const startTime = Date.now();
     const firstSegmentUrl = `http://${serverIp}:3000/uploads/segments/${videoId}/480p/segment_000.mp4`;
@@ -89,7 +91,16 @@ export async function calculateTotalDuration(segments, setTotalDuration) {
 
 //image
 
-const generateThumbnailFromVideo = (videoUrl, time) => {
+export const checkSegmentExists = async (url) => {
+  try {
+    const response = await fetch(url, { method: 'HEAD' });
+    return response.ok; // If the response is ok (200-299), the segment exists
+  } catch (error) {
+    return false; // If there's an error (e.g., 404 or no internet), the segment doesn't exist
+  }
+};
+
+const generateThumbnailFromVideo = async (videoUrl, time) => {
   const video = document.createElement("video");
   video.src = videoUrl;
   video.currentTime = time;
@@ -98,25 +109,33 @@ const generateThumbnailFromVideo = (videoUrl, time) => {
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
 
+  // Wait for the segment to be verified first
+  const exists = await checkSegmentExists(videoUrl);
+  if (!exists) {
+    return { thumbnailUrl: notfind, isAvailable: false }; // If the segment is not found, return Not Found and mark as unavailable
+  }
+
   return new Promise((resolve) => {
     video.onloadeddata = () => {
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
       const thumbnailUrl = canvas.toDataURL("image/png");
-      resolve(thumbnailUrl);
+      resolve({ thumbnailUrl, isAvailable: true }); // Segment exists, return the thumbnail and mark as available
     };
   });
 };
-export const generateThumbnails = (segments, setThumbnails) => {
-  const thumbnailPromises = segments.map((segmentUrl, index) => {
-    return generateThumbnailFromVideo(segmentUrl, 2)
-      .then((thumbnailUrl) => {
-        return { index, thumbnailUrl };
-      });
+
+export const generateThumbnails = async (segments, setThumbnails) => {
+  const thumbnailPromises = segments.map(async (segmentUrl, index) => {
+    try {
+      const { thumbnailUrl, isAvailable } = await generateThumbnailFromVideo(segmentUrl, 2);
+      return { index, thumbnailUrl, isAvailable };
+    } catch (error) {
+      return { index, thumbnailUrl: notfind, isAvailable: false }; // In case of error, return "Not Found" and unavailable
+    }
   });
 
-  Promise.all(thumbnailPromises).then((thumbnailsData) => {
-    setThumbnails(thumbnailsData);  
-  });
+  const thumbnailsData = await Promise.all(thumbnailPromises);
+  setThumbnails(thumbnailsData);
 };
 
 
