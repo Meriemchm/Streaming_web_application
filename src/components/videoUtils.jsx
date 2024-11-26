@@ -94,9 +94,9 @@ export async function calculateTotalDuration(segments, setTotalDuration) {
 export const checkSegmentExists = async (url) => {
   try {
     const response = await fetch(url, { method: 'HEAD' });
-    return response.ok; // If the response is ok (200-299), the segment exists
+    return response.ok; 
   } catch (error) {
-    return false; // If there's an error (e.g., 404 or no internet), the segment doesn't exist
+    return false; 
   }
 };
 
@@ -109,17 +109,17 @@ const generateThumbnailFromVideo = async (videoUrl, time) => {
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
 
-  // Wait for the segment to be verified first
+
   const exists = await checkSegmentExists(videoUrl);
   if (!exists) {
-    return { thumbnailUrl: notfind, isAvailable: false }; // If the segment is not found, return Not Found and mark as unavailable
+    return { thumbnailUrl: notfind, isAvailable: false }; 
   }
 
   return new Promise((resolve) => {
     video.onloadeddata = () => {
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
       const thumbnailUrl = canvas.toDataURL("image/png");
-      resolve({ thumbnailUrl, isAvailable: true }); // Segment exists, return the thumbnail and mark as available
+      resolve({ thumbnailUrl, isAvailable: true }); 
     };
   });
 };
@@ -130,7 +130,7 @@ export const generateThumbnails = async (segments, setThumbnails) => {
       const { thumbnailUrl, isAvailable } = await generateThumbnailFromVideo(segmentUrl, 2);
       return { index, thumbnailUrl, isAvailable };
     } catch (error) {
-      return { index, thumbnailUrl: notfind, isAvailable: false }; // In case of error, return "Not Found" and unavailable
+      return { index, thumbnailUrl: notfind, isAvailable: false }; 
     }
   });
 

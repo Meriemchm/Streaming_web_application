@@ -83,35 +83,30 @@ const upload = multer({
 
 
 const generateSegmentListFile = (videoId) => {
-  // Chemin du dossier où les segments sont stockés
   const videoFolder = path.join(__dirname, 'uploads', 'segments', videoId);
   
-  // Les différentes résolutions que tu pourrais avoir
   const resolutions = ['480p', '720p', '1080p'];
 
-  let segmentList = new Set();  // Use a Set to automatically remove duplicates
+  let segmentList = new Set();  
 
-  // Lire les segments dans chaque dossier de résolution
   resolutions.forEach((resolution) => {
     const resolutionPath = path.join(videoFolder, resolution);
 
     if (fs.existsSync(resolutionPath)) {
       const files = fs.readdirSync(resolutionPath);
-      
-      // Filtrer uniquement les fichiers .mp4 et les ajouter à la liste (Set)
+
       files
         .filter((file) => file.endsWith('.mp4'))
-        .forEach((file) => segmentList.add(file)); // Add to Set, duplicates are ignored
+        .forEach((file) => segmentList.add(file)); // Add to Set
     }
   });
 
-  // Convert Set to array and join the segments
+  // array to join segent
   const fileContent = Array.from(segmentList).join('\n');
 
-  // Chemin du fichier texte à générer
+  // the file generate
   const outputPath = path.join(videoFolder, 'segments_list.txt');
 
-  // Écrire le contenu dans le fichier texte
   fs.writeFileSync(outputPath, fileContent, 'utf8');
 
   console.log(`Fichier texte généré : ${outputPath}`);
