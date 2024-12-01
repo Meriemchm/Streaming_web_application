@@ -1,4 +1,0 @@
-segment_000.mp4
-segment_001.mp4
-segment_002.mp4
-segment_003.mp4

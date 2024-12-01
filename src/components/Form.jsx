@@ -2,7 +2,10 @@ import React, { useState, useRef } from "react";
 
 const Form = () => {
   const [selectedResolutions, setSelectedResolutions] = useState({
+    "240 ": false,
+    "360 ": false,
     "480p": false,
+    "640p": false,
     "720p": false,
     "1080p": false,
   });
@@ -97,7 +100,7 @@ const Form = () => {
             Choisissez les résolutions :
           </label>
           <div className="flex flex-col mb-6">
-            {["480p", "720p", "1080p"].map((res) => (
+            {["240p","360p","480p","640p", "720p", "1080p"].map((res) => (
               <div key={res} className="flex items-center mb-2">
                 <input
                   type="checkbox"

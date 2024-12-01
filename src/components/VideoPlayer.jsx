@@ -4,9 +4,11 @@ import {
   loadVideoSegments,
   generateThumbnails,
   checkSegmentExists,
+  checkBandwidthWithFirstSegment,
+  generateRandomSpeed,
 } from "./videoUtils";
 
-function VideoPlayer({ videoId }) {
+function VideoPlayer({ videoId, speed }) {
   const [resolutions, setResolutions] = useState([]);
   const [resolution, setResolution] = useState("");
   const [videoSources, setVideoSources] = useState([]);
@@ -16,18 +18,35 @@ function VideoPlayer({ videoId }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const videoPlayerRef = useRef(null);
   const serverIp = import.meta.env.VITE_SERVER_IP;
+  // console.log("not main ", (speed / 1000000).toFixed(2));
 
   // Fetch resolutions
+
   useEffect(() => {
-    const fetchResolutions = async () => {
+    const fetchResolutionsAndSetBest = async () => {
       try {
         const response = await fetch(
           `http://${serverIp}:3000/video/resolutions/${videoId}`
         );
         const data = await response.json();
+
         if (response.ok) {
-          setResolutions(data.resolutions);
-          setResolution(data.resolutions[0] || "480p");
+          const availableResolutions = data.resolutions;
+          setResolutions(availableResolutions);
+
+          if (availableResolutions.length > 0) {
+            await checkBandwidthWithFirstSegment(
+              serverIp,
+              videoId,
+              speed,
+              availableResolutions,
+              (bestResolution) => {
+                setResolution(bestResolution);
+              }
+            );
+          } else {
+            setResolution("480p");
+          }
         } else {
           console.error(data.error);
         }
@@ -35,8 +54,9 @@ function VideoPlayer({ videoId }) {
         console.error("Error fetching resolutions:", error);
       }
     };
-    fetchResolutions();
-  }, [videoId]);
+
+    fetchResolutionsAndSetBest();
+  }, [videoId, speed]);
 
   // Load video segments
   useEffect(() => {
@@ -145,11 +165,13 @@ function VideoPlayer({ videoId }) {
           onChange={handleResolutionChange}
           className="mb-4 p-2 border rounded"
         >
-          {resolutions.map((res) => (
-            <option key={res} value={res}>
-              {res}
-            </option>
-          ))}
+          {resolutions
+            .sort((a, b) => parseInt(b) - parseInt(a)) // Trier de la plus grande à la plus petite
+            .map((res) => (
+              <option key={res} value={res}>
+                {res}
+              </option>
+            ))}
         </select>
 
         {/* Video Player */}
@@ -180,24 +202,31 @@ function VideoPlayer({ videoId }) {
 
       <div className="mt-4">
         <div className="flex md:flex-col justify-center items-center">
-          {thumbnails.map(({ index, thumbnailUrl, isAvailable }) => (
-            <button
-              key={index}
-              onClick={isAvailable ? () => goToSegment(index) : undefined} // Disable click if not available
-              className={`border-2 ${
-                currentSegmentIndex === index
-                  ? "border-blue-500"
-                  : "border-transparent"
-              } rounded-md ${
-                isAvailable ? "" : "opacity-50 cursor-not-allowed"
-              }`} // Disable style
-            >
-              <img
-                src={thumbnailUrl}
-                alt={`Segment ${index + 1}`}
-                className="md:w-80 md:h-24 h-16 w-16 object-cover rounded-md"
-              />
-            </button>
+          {thumbnails.map(({ index, thumbnailUrl, isAvailable, size }) => (
+            <div key={index} className="flex flex-col items-center">
+              {/* Afficher la taille en Mo */}
+              <p className="text-sm text-gray-500">
+                {size
+                  ? `${(size / (1024 * 1024)).toFixed(2)} MB`
+                  : "Loading..."}
+              </p>
+              <button
+                onClick={isAvailable ? () => goToSegment(index) : undefined}
+                className={`border-2 ${
+                  currentSegmentIndex === index
+                    ? "border-blue-500"
+                    : "border-transparent"
+                } rounded-md ${
+                  isAvailable ? "" : "opacity-50 cursor-not-allowed"
+                }`}
+              >
+                <img
+                  src={thumbnailUrl}
+                  alt={`Segment ${index + 1}`}
+                  className="md:w-80 md:h-24 h-16 w-16 object-cover rounded-md"
+                />
+              </button>
+            </div>
           ))}
         </div>
       </div>
